@@ -14,11 +14,7 @@ class TempleModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'status': status,
-      'message': message,
-      'data': data?.toJson(),
-    };
+    return {'status': status, 'message': message, 'data': data?.toJson()};
   }
 }
 
@@ -29,16 +25,17 @@ class DataTemples {
 
   factory DataTemples.fromJson(Map<String, dynamic> json) {
     return DataTemples(
-      temples: json['temples'] != null
-          ? List<Temple>.from(json['temples'].map((x) => Temple.fromJson(x)))
-          : null,
+      temples:
+          json['temples'] != null
+              ? List<Temple>.from(
+                json['temples'].map((x) => Temple.fromJson(x)),
+              )
+              : null,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'temples': temples?.map((x) => x.toJson()).toList(),
-    };
+    return {'temples': temples?.map((x) => x.toJson()).toList()};
   }
 }
 
@@ -50,6 +47,8 @@ class Temple {
   String? funfactTitle;
   String? funfactDescription;
   String? locationUrl;
+  double? latitude;
+  double? longitude;
 
   Temple({
     this.templeID,
@@ -59,6 +58,8 @@ class Temple {
     this.funfactTitle,
     this.funfactDescription,
     this.locationUrl,
+    this.latitude,
+    this.longitude,
   });
 
   factory Temple.fromJson(Map<String, dynamic> json) {
@@ -70,6 +71,8 @@ class Temple {
       funfactTitle: json['funfactTitle'],
       funfactDescription: json['funfactDescription'],
       locationUrl: json['locationUrl'],
+      latitude: json['latitude']?.toDouble(),
+      longitude: json['longitude']?.toDouble(),
     );
   }
 
@@ -82,6 +85,8 @@ class Temple {
       'funfactTitle': funfactTitle,
       'funfactDescription': funfactDescription,
       'locationUrl': locationUrl,
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 }

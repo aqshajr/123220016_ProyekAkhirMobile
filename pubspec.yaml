@@ -44,6 +44,11 @@ dependencies:
   shared_preferences: ^2.2.2
   permission_handler: ^11.3.0
   url_launcher: ^6.2.5
+  # Package untuk LBS (Location-Based Service)
+  geolocator: ^12.0.0
+  geocoding: ^3.0.0
+  # Google Maps untuk menampilkan peta dengan pin
+  google_maps_flutter: ^2.5.0
 
 dev_dependencies:
   flutter_test:
