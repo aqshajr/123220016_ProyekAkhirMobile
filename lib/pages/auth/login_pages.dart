@@ -10,7 +10,6 @@ import 'package:artefacto/common/page_header.dart';
 import 'package:artefacto/common/page_heading.dart';
 import 'package:artefacto/common/custom_input_field.dart';
 import 'package:artefacto/common/custom_form_button.dart';
-import 'package:artefacto/pages/auth/forget_password_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../model/user_model.dart';
@@ -64,7 +63,9 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => isAdmin ? const AdminDashboardPage() : const HomePage(),
+            builder:
+                (context) =>
+                    isAdmin ? const AdminDashboardPage() : const HomePage(),
           ),
         );
       } else {
@@ -102,10 +103,10 @@ class _LoginPageState extends State<LoginPage> {
                           hintText: 'Your email id',
                           validator: (textValue) {
                             if (textValue == null || textValue.isEmpty) {
-                              return 'Email is required!';
+                              return 'Email wajib diisi';
                             }
                             if (!EmailValidator.validate(textValue)) {
-                              return 'Please enter a valid email';
+                              return 'Format email tidak valid';
                             }
                             return null;
                           },
@@ -119,30 +120,12 @@ class _LoginPageState extends State<LoginPage> {
                           suffixIcon: true,
                           validator: (textValue) {
                             if (textValue == null || textValue.isEmpty) {
-                              return 'Password is required!';
+                              return 'Password wajib diisi';
                             }
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
-                        Container(
-                          width: size.width * 0.80,
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const ForgetPasswordPage()),
-                            ),
-                            child: const Text(
-                              'Forget password?',
-                              style: TextStyle(
-                                color: Colors.black38,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
+
                         const SizedBox(height: 20),
                         CustomFormButton(
                           innerText: _isLoading ? 'Logging in...' : 'Login',
@@ -156,16 +139,28 @@ class _LoginPageState extends State<LoginPage> {
                             children: [
                               const Text(
                                 'Don\'t have an account? ',
-                                style: TextStyle(fontSize: 13, color: Colors.black38, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black38,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               GestureDetector(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const SignupPage()),
-                                ),
+                                onTap:
+                                    () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) => const SignupPage(),
+                                      ),
+                                    ),
                                 child: const Text(
                                   'Sign-up',
-                                  style: TextStyle(fontSize: 15, color: Colors.black54, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: Colors.black54,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],

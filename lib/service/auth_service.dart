@@ -1,10 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
 import '../model/user_model.dart';
 
 class AuthService {
-  final String baseUrl = 'https://artefacto-backend-749281711221.us-central1.run.app/api/auth';
+  final String baseUrl =
+      'https://artefacto-backend-749281711221.us-central1.run.app/api/auth';
 
   Future<void> _saveUserData({
     required String token,
@@ -20,7 +24,8 @@ class AuthService {
     await prefs.setInt('userId', userId);
     if (username != null) await prefs.setString('username', username);
     if (email != null) await prefs.setString('email', email);
-    if (profilePicture != null) await prefs.setString('profilePicture', profilePicture);
+    if (profilePicture != null)
+      await prefs.setString('profilePicture', profilePicture);
   }
 
   Future<void> _clearUserData() async {
@@ -47,23 +52,18 @@ class AuthService {
       'passwordConfirmation': passwordConfirmation,
       'role': 0,
     });
-
     try {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
-
       final jsonData = jsonDecode(response.body);
-
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final userModel = UserModel.fromJson(jsonData);
-
         if (userModel.status == 'sukses' && userModel.data?.token != null) {
           final user = userModel.data!.user!;
           final token = userModel.data!.token!;
-
           await _saveUserData(
             token: token,
             isAdmin: user.role ?? false,
@@ -72,7 +72,6 @@ class AuthService {
             email: user.email,
             profilePicture: user.profilePicture,
           );
-
           return {
             'success': true,
             'data': userModel.data,
@@ -87,7 +86,8 @@ class AuthService {
       } else {
         return {
           'success': false,
-          'message': jsonData['message'] ?? 'Server error: ${response.statusCode}',
+          'message':
+          jsonData['message'] ?? 'Server error: ${response.statusCode}',
         };
       }
     } catch (e) {
@@ -98,15 +98,13 @@ class AuthService {
     }
   }
 
+
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
     final url = Uri.parse('$baseUrl/login');
-    final body = jsonEncode({
-      'email': email,
-      'password': password,
-    });
+    final body = jsonEncode({'email': email, 'password': password});
 
     try {
       final response = await http.post(
@@ -147,14 +145,12 @@ class AuthService {
       } else {
         return {
           'success': false,
-          'message': jsonData['message'] ?? 'Server error: ${response.statusCode}',
+          'message':
+              jsonData['message'] ?? 'Server error: ${response.statusCode}',
         };
       }
     } catch (e) {
-      return {
-        'success': false,
-        'message': 'Connection error: ${e.toString()}',
-      };
+      return {'success': false, 'message': 'Connection error: ${e.toString()}'};
     }
   }
 

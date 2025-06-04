@@ -12,8 +12,8 @@ import 'edit_profile.dart';
 class ProfilePage extends StatefulWidget {
   final Map<String, dynamic> userData;
 
-  ProfilePage({super.key, required this.userData}) :
-        assert(userData['userId'] != null, 'UserData must contain userId');
+  ProfilePage({super.key, required this.userData})
+    : assert(userData['userId'] != null, 'UserData must contain userId');
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -102,7 +102,11 @@ class _ProfilePageState extends State<ProfilePage> {
         throw Exception(response['message'] ?? 'Failed to load user data');
       }
     } catch (e) {
-      setState(() => errorMessage = 'Error: ${e.toString().replaceAll('Exception: ', '')}');
+      setState(
+        () =>
+            errorMessage =
+                'Error: ${e.toString().replaceAll('Exception: ', '')}',
+      );
       debugPrint("Error loading user: $e");
     } finally {
       setState(() => isLoading = false);
@@ -122,9 +126,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
     try {
       final response = await OwnedTicketService.getOwnedTickets();
-      final filteredTickets = response.data.ownedTickets
-          .where((ticket) => ticket.userID == user?.id)
-          .toList();
+      final filteredTickets =
+          response.data.ownedTickets
+              .where((ticket) => ticket.userID == user?.id)
+              .toList();
 
       setState(() => ownedTickets = filteredTickets);
     } catch (e) {
@@ -132,6 +137,45 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() => errorMessage = 'Failed to load tickets');
     } finally {
       setState(() => isLoadingTickets = false);
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    if (user == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Akun'),
+        content: const Text('Apakah Anda yakin ingin menghapus akun Anda?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final response = await UserApi.deleteUser();
+
+        if (response.status == 'sukses') {
+          await _logout();
+        } else {
+          throw Exception(response.message ?? 'Gagal menghapus akun');
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghapus akun: ${e.toString()}')),
+        );
+      }
     }
   }
 
@@ -152,7 +196,7 @@ class _ProfilePageState extends State<ProfilePage> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const LoginPage()),
-          (route) => false,
+      (route) => false,
     );
   }
 
@@ -165,11 +209,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Profile'),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-      ),
       body: _buildBodyContent(),
     );
   }
@@ -177,13 +216,14 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildBodyContent() {
     return Padding(
       padding: const EdgeInsets.all(24.0),
-      child: isLoading && user == null
-          ? const Center(child: CircularProgressIndicator())
-          : errorMessage != null && user == null
-          ? _buildErrorWidget()
-          : user == null
-          ? _buildNoUserWidget()
-          : _buildProfileContent(),
+      child:
+          isLoading && user == null
+              ? const Center(child: CircularProgressIndicator())
+              : errorMessage != null && user == null
+              ? _buildErrorWidget()
+              : user == null
+              ? _buildNoUserWidget()
+              : _buildProfileContent(),
     );
   }
 
@@ -211,9 +251,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ElevatedButton(
                 onPressed: _logout,
                 child: const Text('Login Again'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
               ),
             ],
           ),
@@ -229,10 +267,7 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           const Icon(Icons.person_off, size: 48, color: Colors.grey),
           const SizedBox(height: 16),
-          const Text(
-            'No user data available',
-            style: TextStyle(fontSize: 16),
-          ),
+          const Text('No user data available', style: TextStyle(fontSize: 16)),
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: _initializeUser,
@@ -271,18 +306,14 @@ class _ProfilePageState extends State<ProfilePage> {
         CircleAvatar(
           radius: 50,
           backgroundColor: const Color(0xff233743),
-          backgroundImage: user?.profilePicture != null &&
-              user!.profilePicture!.isNotEmpty
-              ? NetworkImage(user!.profilePicture!)
-              : null,
-          child: user?.profilePicture == null ||
-              user!.profilePicture!.isEmpty
-              ? const Icon(
-            Icons.person,
-            size: 60,
-            color: Colors.white,
-          )
-              : null,
+          backgroundImage:
+              user?.profilePicture != null && user!.profilePicture!.isNotEmpty
+                  ? NetworkImage(user!.profilePicture!)
+                  : null,
+          child:
+              user?.profilePicture == null || user!.profilePicture!.isEmpty
+                  ? const Icon(Icons.person, size: 60, color: Colors.white)
+                  : null,
         ),
         if (user?.profilePicture != null && user!.profilePicture!.isNotEmpty)
           Positioned(
@@ -294,7 +325,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.camera_alt, size: 20, color: Colors.black),
+              child: const Icon(
+                Icons.camera_alt,
+                size: 20,
+                color: Colors.black,
+              ),
             ),
           ),
       ],
@@ -315,10 +350,7 @@ class _ProfilePageState extends State<ProfilePage> {
         const SizedBox(height: 4),
         Text(
           user?.email ?? 'No email',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.brown.shade300,
-          ),
+          style: TextStyle(fontSize: 14, color: Colors.brown.shade300),
         ),
       ],
     );
@@ -382,7 +414,7 @@ class _ProfilePageState extends State<ProfilePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              ticket.ticket.temple.title,
+              temple.title,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
@@ -394,15 +426,17 @@ class _ProfilePageState extends State<ProfilePage> {
             Text(
               "Status: ${ticket.usageStatus}",
               style: TextStyle(
-                color: ticket.usageStatus.toLowerCase() == 'used'
-                    ? Colors.red
-                    : Colors.green,
+                color:
+                    ticket.usageStatus.toLowerCase() == 'used'
+                        ? Colors.red
+                        : Colors.green,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            Text("Tempat: ${temple.location?? '-'}"),
-            Text("Berlaku hingga: ${DateFormat('dd MMM yyyy').format(ticket.validDate)}"),
+            Text(
+              "Berlaku hingga: ${DateFormat('dd MMM yyyy').format(ticket.validDate)}",
+            ),
             Text("Harga: ${priceFormat.format(ticket.ticket.price)}"),
           ],
         ),
@@ -418,13 +452,16 @@ class _ProfilePageState extends State<ProfilePage> {
           label: "Edit Profile",
           color: Colors.blue.shade100,
           textColor: Colors.blue.shade800,
-          onPressed: () {
-            Navigator.push(
+          onPressed: () async {
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => EditProfilePage(user: user!),
               ),
-            ).then((_) => _refreshProfile());
+            );
+            if (result == true) {
+              _refreshProfile();
+            }
           },
         ),
         const SizedBox(height: 20),
@@ -448,6 +485,15 @@ class _ProfilePageState extends State<ProfilePage> {
           textColor: Colors.brown,
           onPressed: _showLogoutDialog,
         ),
+
+        const SizedBox(height: 20),
+        _buildActionButton(
+          icon: Icons.delete_forever,
+          label: "Hapus Akun",
+          color: Colors.red.shade100,
+          textColor: Colors.red,
+          onPressed: _deleteAccount,
+        ),
       ],
     );
   }
@@ -466,9 +512,7 @@ class _ProfilePageState extends State<ProfilePage> {
         backgroundColor: color,
         foregroundColor: textColor,
         minimumSize: const Size.fromHeight(50),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       onPressed: onPressed,
     );
@@ -477,23 +521,24 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showLogoutDialog() {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Logout'),
+            content: const Text('Are you sure you want to logout?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _logout();
+                },
+                child: const Text('Yes'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _logout();
-            },
-            child: const Text('Yes'),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -62,10 +62,12 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
       final response = await TransaksiService.createTransaction(request);
 
       if (response.status == 'sukses') {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(response.message ?? 'Transaksi berhasil'),
-          backgroundColor: Colors.green,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message ?? 'Transaksi berhasil'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.pop(context); // kembali ke halaman sebelumnya
       } else {
         _showError(response.message ?? 'Gagal memproses transaksi');
@@ -79,10 +81,9 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
 
   void _showError(String message) {
     setState(() => _message = message);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: Colors.red,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -102,10 +103,15 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
             children: [
               Text(
                 ticket.temple?.templeName ?? 'Tiket Wisata',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
-              Text('Harga: Rp${NumberFormat('#,##0').format(ticket.price ?? 0)}'),
+              Text(
+                'Harga: Rp${NumberFormat('#,##0').format(ticket.price ?? 0)}',
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _dateController,
@@ -119,7 +125,15 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
                   border: OutlineInputBorder(),
                 ),
                 readOnly: true,
-                validator: (val) => val == null || val.isEmpty ? 'Pilih tanggal' : null,
+                validator: (val) {
+                  if (val == null || val.isEmpty) return 'Tanggal wajib diisi';
+                  final now = DateTime.now();
+                  final inputDate = DateTime.tryParse(val);
+                  if (inputDate == null) return 'Format tanggal tidak valid';
+                  if (!inputDate.isAfter(now.subtract(const Duration(days: 1))))
+                    return 'Tanggal harus masa depan';
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -132,7 +146,8 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
                 keyboardType: TextInputType.number,
                 validator: (val) {
                   final qty = int.tryParse(val ?? '');
-                  if (qty == null || qty <= 0) return 'Minimal 1 tiket';
+                  if (qty == null || qty <= 0)
+                    return 'Jumlah tiket wajib diisi, minimal 1';
                   return null;
                 },
               ),
@@ -140,9 +155,11 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
               ElevatedButton(
                 onPressed: _isLoading ? null : _processPurchase,
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xffB69574),
-                    padding: const EdgeInsets.symmetric(vertical: 16)),
-                child: _isLoading
+                  backgroundColor: const Color(0xffB69574),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child:
+                _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text('PROSES PEMBELIAN'),
               ),
@@ -152,11 +169,14 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
                   child: Text(
                     _message,
                     style: TextStyle(
-                      color: _message.contains("Gagal") ? Colors.red : Colors.green,
+                      color:
+                      _message.contains("Gagal")
+                          ? Colors.red
+                          : Colors.green,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                )
+                ),
             ],
           ),
         ),
