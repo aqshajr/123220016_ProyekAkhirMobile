@@ -8,7 +8,7 @@ class Splashscreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Navigate to LoginPage after 3 seconds
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => LoginPage()), // Direct navigation

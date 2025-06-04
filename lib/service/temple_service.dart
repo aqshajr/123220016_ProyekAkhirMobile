@@ -3,9 +3,12 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:artefacto/model/temple_model.dart';
 import 'auth_service.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
 
 class TempleService {
-  static const String baseUrl = "https://artefacto-backend-749281711221.us-central1.run.app/api/temples";
+  static const String baseUrl =
+      "https://artefacto-backend-749281711221.us-central1.run.app/api/temples";
 
   // Mendapatkan headers dengan token
   static Future<Map<String, String>> _getHeaders() async {
@@ -35,7 +38,10 @@ class TempleService {
   // Ambil temple berdasarkan ID
   static Future<Temple> getTempleById(int id) async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse("$baseUrl/$id"), headers: headers);
+    final response = await http.get(
+      Uri.parse("$baseUrl/$id"),
+      headers: headers,
+    );
 
     if (response.statusCode == 200) {
       final jsonResponse = jsonDecode(response.body);
@@ -48,72 +54,160 @@ class TempleService {
     }
   }
 
-  // Membuat temple baru
-  static Future<Temple> createTemple(Temple temple, File? selectedImageFile) async {
-    final headers = await _getHeaders();
-    final response = await http.post(
-      Uri.parse(baseUrl),
-      headers: headers,
-      body: jsonEncode(temple.toJson()),
-    );
+  // Tambah candi baru dengan optional image
+  static Future<Temple> createTempleWithImage({
+    required String title,
+    required String description,
+    String? funfactTitle,
+    String? funfactDescription,
+    String? locationUrl,
+    File? imageFile,
+  }) async {
+    final token = await AuthService().getToken();
+    final uri = Uri.parse(baseUrl);
+    final request = http.MultipartRequest('POST', uri);
+
+    request.headers['Authorization'] = 'Bearer $token';
+
+    request.fields['title'] = title;
+    request.fields['description'] = description;
+    if (funfactTitle != null && funfactTitle.isNotEmpty)
+      request.fields['funfactTitle'] = funfactTitle;
+    if (funfactDescription != null && funfactDescription.isNotEmpty)
+      request.fields['funfactDescription'] = funfactDescription;
+    if (locationUrl != null && locationUrl.isNotEmpty)
+      request.fields['locationUrl'] = locationUrl;
+
+    if (imageFile != null) {
+      final mimeType = lookupMimeType(imageFile.path) ?? 'image/jpeg';
+      final fileExt = imageFile.path.split('.').last.toLowerCase();
+      final mediaType =
+          fileExt == 'png'
+              ? MediaType('image', 'png')
+              : MediaType('image', 'jpeg');
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'image',
+          imageFile.path,
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
+    }
+
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
 
     if (response.statusCode == 201) {
-      final jsonResponse = jsonDecode(response.body);
-      final templeJson = jsonResponse['data']['temple'] ?? jsonResponse['data'];
+      final json = jsonDecode(responseBody);
+      final templeJson = json['data']['temple'];
       return Temple.fromJson(templeJson);
-    } else if (response.statusCode == 401) {
-      throw Exception('Session expired, please login again');
     } else {
-      throw Exception('Failed to create temple: ${response.statusCode}');
+      throw Exception(
+        'Failed to create temple: ${response.statusCode} - $responseBody',
+      );
     }
   }
 
-  // Menghapus temple
-  static Future<String> deleteTemple(int id) async {
+  // Edit temple tanpa ubah foto
+  static Future<Temple> updateTempleWithoutImage({
+    required int templeId,
+    required String title,
+    required String description,
+    String? funfactTitle,
+    String? funfactDescription,
+    String? locationUrl,
+  }) async {
     final headers = await _getHeaders();
-    final response = await http.delete(Uri.parse("$baseUrl/$id"), headers: headers);
+    final uri = Uri.parse("$baseUrl/$templeId");
+
+    final body = {
+      'title': title,
+      'description': description,
+      if (funfactTitle != null) 'funfactTitle': funfactTitle,
+      if (funfactDescription != null) 'funfactDescription': funfactDescription,
+      if (locationUrl != null) 'locationUrl': locationUrl,
+    };
+
+    final response = await http.put(
+      uri,
+      headers: {...headers, 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
 
     if (response.statusCode == 200) {
-      final jsonResponse = jsonDecode(response.body);
-      return jsonResponse['message'] ?? 'Temple deleted successfully';
-    } else if (response.statusCode == 401) {
-      throw Exception('Session expired, please login again');
+      final json = jsonDecode(response.body);
+      final templeJson = json['data']['temple'];
+      return Temple.fromJson(templeJson);
     } else {
-      throw Exception('Failed to delete temple: ${response.statusCode}');
+      throw Exception('Failed to update temple: ${response.statusCode}');
     }
   }
 
-  // Memperbarui temple (dengan file gambar opsional)
-  static Future<Temple> updateTempleWithImage(Temple temple, File? imageFile) async {
+  // Edit temple dengan image
+  static Future<Temple> updateTempleWithImage({
+    required int templeId,
+    required String title,
+    required String description,
+    String? funfactTitle,
+    String? funfactDescription,
+    String? locationUrl,
+    File? imageFile,
+  }) async {
     final token = await AuthService().getToken();
-    final uri = Uri.parse("$baseUrl/${temple.templeID}");
+    final uri = Uri.parse("$baseUrl/$templeId");
     final request = http.MultipartRequest('PUT', uri);
 
     request.headers['Authorization'] = 'Bearer $token';
 
-    // Menambahkan field teks
-    request.fields['title'] = temple.title ?? '';
-    request.fields['description'] = temple.description ?? '';
-    request.fields['funfactTitle'] = temple.funfactTitle ?? '';
-    request.fields['funfactDescription'] = temple.funfactDescription ?? '';
-    request.fields['locationUrl'] = temple.locationUrl ?? '';
+    request.fields['title'] = title;
+    request.fields['description'] = description;
+    if (funfactTitle != null && funfactTitle.isNotEmpty)
+      request.fields['funfactTitle'] = funfactTitle;
+    if (funfactDescription != null && funfactDescription.isNotEmpty)
+      request.fields['funfactDescription'] = funfactDescription;
+    if (locationUrl != null && locationUrl.isNotEmpty)
+      request.fields['locationUrl'] = locationUrl;
 
-    // Jika ada file gambar
     if (imageFile != null) {
-      request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+      final mimeType = lookupMimeType(imageFile.path) ?? 'image/jpeg';
+      final fileExt = imageFile.path.split('.').last.toLowerCase();
+      final mediaType =
+          fileExt == 'png'
+              ? MediaType('image', 'png')
+              : MediaType('image', 'jpeg');
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'image',
+          imageFile.path,
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
     }
 
     final response = await request.send();
     final responseBody = await response.stream.bytesToString();
 
     if (response.statusCode == 200) {
-      final jsonResponse = jsonDecode(responseBody);
-      final templeJson = jsonResponse['data']['temple'] ?? jsonResponse['data'];
+      final json = jsonDecode(responseBody);
+      final templeJson = json['data']['temple'];
       return Temple.fromJson(templeJson);
-    } else if (response.statusCode == 401) {
-      throw Exception('Session expired, please login again');
     } else {
-      throw Exception("Failed to update temple: ${response.statusCode}");
+      throw Exception(
+        'Failed to update temple with image: ${response.statusCode} - $responseBody',
+      );
+    }
+  }
+
+  // Hapus temple
+  static Future<void> deleteTemple(int id) async {
+    final headers = await _getHeaders();
+    final response = await http.delete(
+      Uri.parse("$baseUrl/$id"),
+      headers: headers,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete temple: ${response.statusCode}');
     }
   }
 }

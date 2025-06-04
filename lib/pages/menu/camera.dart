@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/services.dart';
+
+import '../../service/model_service.dart';
 
 class CameraPage extends StatefulWidget {
   const CameraPage({super.key});
@@ -16,32 +19,61 @@ class _CameraPageState extends State<CameraPage> {
   String _predictionResult = '';
   bool _isLoading = false;
   final ImagePicker _picker = ImagePicker();
+  final ModelService _modelService = ModelService();
 
-  // Color Scheme matching EksplorasiPage
   final Color _primaryDarkBlue = const Color(0xff233743);
   final Color _errorRed = const Color(0xFFE57373);
   final Color _accentBrown = const Color(0xffB69574);
 
-  Future<bool> _checkAndRequestPermissions(bool isCamera) async {
+  Future<bool> _requestGalleryPermission() async {
     try {
-      if (await Permission.photos.isRestricted) {
+      if (Platform.isAndroid) {
+        // Android 13+ (API 33) menggunakan media permissions
+        if (await Permission.mediaLibrary.isRestricted) {
+          return false;
+        }
+
+        final status = await Permission.mediaLibrary.request();
+        if (status.isGranted) return true;
+        if (status.isPermanentlyDenied) {
+          _showSettingsDialog();
+          return false;
+        }
+
+        // Fallback untuk Android <13
+        final storageStatus = await Permission.storage.request();
+        return storageStatus.isGranted;
+      } else {
+        // iOS
+        final status = await Permission.photos.request();
+        if (status.isGranted) return true;
+        if (status.isPermanentlyDenied) {
+          _showSettingsDialog();
+          return false;
+        }
+        return false;
+      }
+    } on PlatformException catch (e) {
+      debugPrint('Permission error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _requestCameraPermission() async {
+    try {
+      if (await Permission.camera.isRestricted) {
         return false;
       }
 
-      Map<Permission, PermissionStatus> statuses = await [
-        if (isCamera) Permission.camera,
-        Permission.storage,
-        Permission.photos,
-      ].request();
-
-      if (statuses.containsValue(PermissionStatus.permanentlyDenied)) {
+      final status = await Permission.camera.request();
+      if (status.isGranted) return true;
+      if (status.isPermanentlyDenied) {
         _showSettingsDialog();
         return false;
       }
-
-      return statuses.values.every((status) => status.isGranted);
-    } catch (e) {
-      _showError('Error checking permissions: ${e.toString()}');
+      return false;
+    } on PlatformException catch (e) {
+      debugPrint('Camera permission error: $e');
       return false;
     }
   }
@@ -52,17 +84,16 @@ class _CameraPageState extends State<CameraPage> {
       builder: (BuildContext context) => AlertDialog(
         title: Text('Permission Required',
             style: GoogleFonts.openSans(fontWeight: FontWeight.bold)),
-        content: Text(
-            'Please enable permissions in app settings',
+        content: Text('Please enable permissions in app settings',
             style: GoogleFonts.openSans()),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () => openAppSettings().then((_) => Navigator.pop(context)),
-            child: Text('Open Settings'),
+            child: const Text('Open Settings'),
           ),
         ],
       ),
@@ -71,8 +102,11 @@ class _CameraPageState extends State<CameraPage> {
 
   Future<void> _pickImageFromGallery() async {
     try {
-      final hasPermission = await _checkAndRequestPermissions(false);
-      if (!hasPermission) return;
+      final hasPermission = await _requestGalleryPermission();
+      if (!hasPermission) {
+        _showError('Gallery permission denied');
+        return;
+      }
 
       final XFile? pickedFile = await _picker.pickImage(
         source: ImageSource.gallery,
@@ -87,13 +121,17 @@ class _CameraPageState extends State<CameraPage> {
       }
     } catch (e) {
       _showError('Failed to pick image: ${e.toString()}');
+      debugPrint('Image picker error: $e');
     }
   }
 
   Future<void> _captureImageFromCamera() async {
     try {
-      final hasPermission = await _checkAndRequestPermissions(true);
-      if (!hasPermission) return;
+      final hasPermission = await _requestCameraPermission();
+      if (!hasPermission) {
+        _showError('Camera permission denied');
+        return;
+      }
 
       final XFile? pickedFile = await _picker.pickImage(
         source: ImageSource.camera,
@@ -109,6 +147,7 @@ class _CameraPageState extends State<CameraPage> {
       }
     } catch (e) {
       _showError('Failed to capture image: ${e.toString()}');
+      debugPrint('Camera error: $e');
     }
   }
 
@@ -123,13 +162,18 @@ class _CameraPageState extends State<CameraPage> {
       _predictionResult = '';
     });
 
-    // TODO: Replace with actual API call
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() {
-      _isLoading = false;
-      _predictionResult = 'Borobudur Statue successfully recognized!';
-    });
+    try {
+      final prediction = await _modelService.predictArtifact(_imageFile!);
+      setState(() {
+        _predictionResult = prediction;
+      });
+    } catch (e) {
+      _showError(e.toString());
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _showError(String message) {
@@ -145,21 +189,18 @@ class _CameraPageState extends State<CameraPage> {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final availableHeight = mediaQuery.size.height -
-        mediaQuery.padding.top -
-        kToolbarHeight;
+    final availableHeight =
+        mediaQuery.size.height - mediaQuery.padding.top - kToolbarHeight;
 
     return Scaffold(
       body: Stack(
         children: [
-          // Background image only (no gradient overlay)
           Positioned.fill(
             child: Image.asset(
               'assets/images/background.png',
               fit: BoxFit.cover,
             ),
           ),
-          // Content directly on top of background image
           SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -318,97 +359,30 @@ class _CameraPageState extends State<CameraPage> {
   Widget _buildResultsSection() {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
-      child: _isLoading
-          ? const CircularProgressIndicator()
-          : _predictionResult.isEmpty
-          ? _buildInstructions()
-          : _buildPredictionResult(),
-    );
-  }
-
-  Widget _buildInstructions() {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Icon(Icons.info_outline,
-                size: 40, color: _accentBrown.withOpacity(0.7)),
-            const SizedBox(height: 15),
-            Text(
-              'How to use:',
-              style: GoogleFonts.playfairDisplay(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              '1. Select image from gallery or take photo\n'
-                  '2. Press "Scan Artifact" button\n'
-                  '3. Wait for identification results',
-              style: GoogleFonts.openSans(height: 1.5),
-              textAlign: TextAlign.center,
+      child: _predictionResult.isEmpty
+          ? const SizedBox.shrink()
+          : Container(
+        key: ValueKey<String>(_predictionResult),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white70,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: _primaryDarkBlue.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildPredictionResult() {
-    return Card(
-      elevation: 5,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Icon(Icons.verified, size: 50, color: Colors.green.shade600),
-            const SizedBox(height: 15),
-            Text(
-              'IDENTIFICATION RESULT',
-              style: GoogleFonts.playfairDisplay(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 15),
-            Text(
-              _predictionResult,
-              style: GoogleFonts.openSans(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryDarkBlue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 30,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () {
-                // TODO: Navigate to detail page
-              },
-              child: Text(
-                'VIEW DETAILS',
-                style: GoogleFonts.openSans(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
+        child: Text(
+          'Result:\n$_predictionResult',
+          style: GoogleFonts.openSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: _primaryDarkBlue,
+          ),
+          textAlign: TextAlign.center,
         ),
       ),
     );

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -43,25 +45,23 @@ class _TempleListScreenState extends State<TempleListScreen> {
     }
   }
 
-  Future<void> _handleAddTemple(Temple? newTemple) async {
-    if (newTemple == null) return;
 
-    try {
-      setState(() => _isLoading = true);
-      await TempleService.createTemple(newTemple, null);
-      await _loadTemples();
-      _showSuccessSnackbar('${newTemple.title} berhasil ditambahkan');
-    } catch (e) {
-      _showErrorSnackbar('Gagal menambahkan candi: $e');
-    }
-  }
-
-  Future<void> _handleEditTemple(Temple? updatedTemple) async {
+  Future<void> _handleEditTemple(Map<String, dynamic>? result) async {
+    if (result == null) return;
+    final Temple? updatedTemple = result['temple'] as Temple?;
+    final File? imageFile = result['image'] as File?;
     if (updatedTemple == null) return;
-
     try {
       setState(() => _isLoading = true);
-      await TempleService.updateTempleWithImage(updatedTemple, null);
+      await TempleService.updateTempleWithImage(
+        templeId: updatedTemple.templeID!,
+        title: updatedTemple.title ?? '',
+        description: updatedTemple.description ?? '',
+        funfactTitle: updatedTemple.funfactTitle,
+        funfactDescription: updatedTemple.funfactDescription,
+        locationUrl: updatedTemple.locationUrl,
+        imageFile: imageFile,
+      );
       await _loadTemples();
       _showSuccessSnackbar('${updatedTemple.title} berhasil diperbarui');
     } catch (e) {
@@ -82,19 +82,13 @@ class _TempleListScreenState extends State<TempleListScreen> {
 
   void _showSuccessSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -114,19 +108,15 @@ class _TempleListScreenState extends State<TempleListScreen> {
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () async {
-              final result = await Navigator.push(
+              final result = await Navigator.push<Map<String, dynamic>?>(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const TempleFormScreen(),
                 ),
               );
-              _handleAddTemple(result);
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadTemples,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadTemples),
         ],
       ),
       body: _buildBody(),
@@ -178,26 +168,29 @@ class _TempleListScreenState extends State<TempleListScreen> {
     return Card(
       margin: const EdgeInsets.all(8.0),
       child: ListTile(
-        leading: temple.imageUrl != null
-            ? Image.network(
-          temple.imageUrl!,
-          width: 60,
-          height: 60,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-        )
-            : const Icon(Icons.temple_buddhist, size: 60),
+        leading:
+            temple.imageUrl != null
+                ? Image.network(
+                  temple.imageUrl! +
+                      '?v=${DateTime.now().millisecondsSinceEpoch}',
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                )
+                : const Icon(Icons.temple_buddhist, size: 60),
         title: Text(
           temple.title ?? 'Tanpa Judul',
-          style: GoogleFonts.merriweather(
-            fontWeight: FontWeight.bold,
-          ),
+          style: GoogleFonts.merriweather(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (temple.templeID != null)
-              Text('ID Candi: ${temple.templeID}', style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                'ID Candi: ${temple.templeID}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             Text(
               temple.description ?? 'Tidak ada deskripsi',
               maxLines: 2,
@@ -216,13 +209,14 @@ class _TempleListScreenState extends State<TempleListScreen> {
             IconButton(
               icon: const Icon(Icons.edit, color: Colors.blue),
               onPressed: () async {
-                final result = await Navigator.push(
+                final result = await Navigator.push<Map<String, dynamic>?>(
                   context,
                   MaterialPageRoute(
                     builder: (context) => TempleFormScreen(temple: temple),
                   ),
                 );
-                _handleEditTemple(result);
+
+                await _handleEditTemple(result);
               },
             ),
             IconButton(
@@ -238,23 +232,24 @@ class _TempleListScreenState extends State<TempleListScreen> {
   void _showDeleteDialog(Temple temple) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Hapus Candi?'),
-        content: Text('Yakin ingin menghapus ${temple.title}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
+      builder:
+          (context) => AlertDialog(
+            title: Text('Hapus Candi?'),
+            content: Text('Yakin ingin menghapus ${temple.title}?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _handleDeleteTemple(temple.templeID!);
+                },
+                child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _handleDeleteTemple(temple.templeID!);
-            },
-            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
     );
   }
 }

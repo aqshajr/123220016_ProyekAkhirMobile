@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:artefacto/model/artifact_model.dart';
 import 'package:artefacto/service/artifact_service.dart';
+import 'dart:io';
 
 import 'artifact_form_screen.dart';
 
@@ -43,41 +44,15 @@ class _ArtifactListScreenState extends State<ArtifactListScreen> {
     }
   }
 
-  Future<void> _addArtifact(Artifact newArtifact) async {
-    try {
-      final ArtifactRequest request = ArtifactRequest(
-        templeID: newArtifact.templeID,
-        title: newArtifact.title,
-        description: newArtifact.description,
-        detailPeriod: newArtifact.detailPeriod,
-        detailMaterial: newArtifact.detailMaterial,
-        detailSize: newArtifact.detailSize,
-        detailStyle: newArtifact.detailStyle,
-        funfactTitle: newArtifact.funfactTitle,
-        funfactDescription: newArtifact.funfactDescription,
-        locationUrl: newArtifact.locationUrl,
-      );
 
-      final addedArtifact = await ArtifactService.createArtifact(request);
-      setState(() {
-        artifacts.add(addedArtifact);
-      });
-      _showSuccessSnackbar('${addedArtifact.title} added successfully');
-    } catch (e) {
-      _showErrorSnackbar('Failed to add artifact: ${e.toString()}');
-    }
-  }
-
-  Future<void> _editArtifact(Artifact updatedArtifact) async {
+  Future<void> _editArtifact(Map<String, dynamic>? result) async {
+    if (result == null) return;
+    final Artifact? updatedArtifact = result['artifact'] as Artifact?;
+    final File? imageFile = result['image'] as File?;
+    if (updatedArtifact == null) return;
     try {
-      // Using updateArtifactWithImage with null image for regular updates
-      final updated = await ArtifactService.updateArtifactWithImage(updatedArtifact, null);
-      setState(() {
-        final index = artifacts.indexWhere((a) => a.artifactID == updated.artifactID);
-        if (index != -1) {
-          artifacts[index] = updated;
-        }
-      });
+      await ArtifactService.updateArtifactWithImage(updatedArtifact, imageFile);
+      await _loadArtifacts();
       _showSuccessSnackbar('${updatedArtifact.title} updated successfully');
     } catch (e) {
       _showErrorSnackbar('Failed to update artifact: ${e.toString()}');
@@ -98,19 +73,13 @@ class _ArtifactListScreenState extends State<ArtifactListScreen> {
 
   void _showSuccessSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -133,7 +102,14 @@ class _ArtifactListScreenState extends State<ArtifactListScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => _navigateToFormScreen(),
+            onPressed: () async {
+              final result = await Navigator.push<Map<String, dynamic>?>(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ArtifactFormScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -206,15 +182,17 @@ class _ArtifactListScreenState extends State<ArtifactListScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.network(
-                  artifact.imageUrl!,
+                  artifact.imageUrl! +
+                      '?v=${DateTime.now().millisecondsSinceEpoch}',
                   height: 150,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 150,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.broken_image, size: 50),
-                  ),
+                  errorBuilder:
+                      (_, __, ___) => Container(
+                        height: 150,
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.broken_image, size: 50),
+                      ),
                 ),
               ),
             const SizedBox(height: 12),
@@ -238,7 +216,16 @@ class _ArtifactListScreenState extends State<ArtifactListScreen> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.blue),
-                  onPressed: () => _navigateToFormScreen(artifact: artifact),
+                  onPressed: () async {
+                    final result = await Navigator.push<Map<String, dynamic>?>(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => ArtifactFormScreen(artifact: artifact),
+                      ),
+                    );
+                    await _editArtifact(result);
+                  },
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
@@ -252,43 +239,32 @@ class _ArtifactListScreenState extends State<ArtifactListScreen> {
     );
   }
 
-  Future<void> _navigateToFormScreen({Artifact? artifact}) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ArtifactFormScreen(artifact: artifact),
-      ),
-    );
-
-    if (result != null && result is Artifact) {
-      if (artifact == null) {
-        await _addArtifact(result);
-      } else {
-        await _editArtifact(result);
-      }
-    }
-  }
-
   Future<void> _showDeleteDialog(Artifact artifact) async {
     return showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete "${artifact.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Confirm Delete'),
+            content: Text(
+              'Are you sure you want to delete "${artifact.title}"?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _deleteArtifact(artifact.artifactID);
+                },
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteArtifact(artifact.artifactID);
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
     );
   }
 }

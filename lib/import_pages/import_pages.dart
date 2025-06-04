@@ -1,5 +1,4 @@
 //pages
-export 'package:artefacto/pages/auth/forget_password_page.dart';
 export 'package:artefacto/pages/auth/login_pages.dart';
 export 'package:artefacto/pages/auth/signup_pages.dart';
 export 'package:artefacto/pages/menu/home.dart';

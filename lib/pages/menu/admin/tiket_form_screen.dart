@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:artefacto/model/tiket_model.dart';
 import 'package:artefacto/service/tiket_service.dart';
+import 'package:artefacto/model/temple_model.dart';
+import 'package:artefacto/service/temple_service.dart';
 // import 'package:google_fonts/google_fonts.dart'; // opsional
 
 class TicketFormScreen extends StatefulWidget {
@@ -19,6 +21,8 @@ class _TicketFormScreenState extends State<TicketFormScreen> {
 
   bool _isLoading = false;
   String? _errorMessage;
+  List<Temple> _templeList = [];
+  bool _isTempleLoading = false;
 
   @override
   void initState() {
@@ -27,6 +31,21 @@ class _TicketFormScreenState extends State<TicketFormScreen> {
       _templeIdController.text = widget.ticket!.templeID?.toString() ?? '';
       _priceController.text = widget.ticket!.price?.toString() ?? '';
       _descriptionController.text = widget.ticket!.description ?? '';
+    }
+    _fetchTemples();
+  }
+
+  Future<void> _fetchTemples() async {
+    setState(() => _isTempleLoading = true);
+    try {
+      final temples = await TempleService.getTemples();
+      setState(() {
+        _templeList = temples;
+        _isTempleLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isTempleLoading = false);
+      _errorMessage = 'Gagal memuat daftar candi: $e';
     }
   }
 
@@ -46,7 +65,10 @@ class _TicketFormScreenState extends State<TicketFormScreen> {
 
         late TicketResponse response;
         if (widget.ticket != null) {
-          response = await TicketService.updateTicket(widget.ticket!.ticketID!, ticketRequest);
+          response = await TicketService.updateTicket(
+            widget.ticket!.ticketID!,
+            ticketRequest,
+          );
         } else {
           response = await TicketService.createTicket(ticketRequest);
         }
@@ -102,19 +124,40 @@ class _TicketFormScreenState extends State<TicketFormScreen> {
                     style: const TextStyle(color: Colors.red),
                   ),
                 ),
-              TextFormField(
-                controller: _templeIdController,
-                decoration: const InputDecoration(
-                  labelText: 'ID Candi',
-                  hintText: 'Masukkan ID candi',
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Mohon masukkan ID Candi';
-                  if (int.tryParse(value) == null) return 'ID Candi harus berupa angka';
-                  return null;
-                },
-              ),
+              _isTempleLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : DropdownButtonFormField<int>(
+                    value:
+                        _templeIdController.text.isNotEmpty
+                            ? int.tryParse(_templeIdController.text)
+                            : null,
+                    items:
+                        _templeList
+                            .map(
+                              (temple) => DropdownMenuItem<int>(
+                                value: temple.templeID,
+                                child: Text(
+                                  temple.title ?? 'Candi ${temple.templeID}',
+                                ),
+                              ),
+                            )
+                            .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _templeIdController.text = value?.toString() ?? '';
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Pilih Candi',
+                      hintText: 'Pilih candi untuk tiket',
+                    ),
+                    validator: (value) {
+                      if (value == null) {
+                        return 'Pilih candi terlebih dahulu';
+                      }
+                      return null;
+                    },
+                  ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _priceController,
@@ -122,10 +165,16 @@ class _TicketFormScreenState extends State<TicketFormScreen> {
                   labelText: 'Harga',
                   hintText: 'Masukkan harga tiket',
                 ),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Mohon masukkan harga tiket';
-                  if (double.tryParse(value) == null) return 'Harga harus berupa angka';
+                  if (value == null || value.isEmpty)
+                    return 'Harga tiket wajib diisi';
+                  final price = double.tryParse(value);
+                  if (price == null) return 'Harga harus berupa angka';
+                  if (price < 0)
+                    return 'Harga tiket harus berupa angka positif';
                   return null;
                 },
               ),
@@ -138,7 +187,8 @@ class _TicketFormScreenState extends State<TicketFormScreen> {
                 ),
                 maxLines: 3,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Mohon masukkan deskripsi tiket';
+                  if (value == null || value.isEmpty)
+                    return 'Deskripsi tiket wajib diisi';
                   return null;
                 },
               ),
@@ -146,13 +196,13 @@ class _TicketFormScreenState extends State<TicketFormScreen> {
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(
-                onPressed: _submitForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xff233743),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: Text(isEditMode ? 'Simpan Perubahan' : 'Buat Tiket'),
-              ),
+                    onPressed: _submitForm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xff233743),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: Text(isEditMode ? 'Simpan Perubahan' : 'Buat Tiket'),
+                  ),
             ],
           ),
         ),

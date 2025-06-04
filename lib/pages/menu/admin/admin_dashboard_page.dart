@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:artefacto/pages/menu/admin/temple_list_screen.dart';
 import 'package:artefacto/pages/menu/admin/artifact_list_screen.dart';
 import 'package:artefacto/pages/menu/admin/tiket_list_screen.dart';
-
 import '../../auth/login_pages.dart';
 
 class AdminDashboardPage extends StatefulWidget {
@@ -146,6 +145,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                   );
                 },
               ),
+              // const SizedBox(height: 20),
+              // _buildAdminCard(
+              //   context,
+              //   title: "Kelola Transaksi",
+              //   subtitle: "Lihat dan kelola data transaksi.",
+              //   icon: Icons.receipt_long,
+              //   onTap: () {
+              //     Navigator.push(
+              //       context,
+              //       MaterialPageRoute(builder: (context) => const TransactionListScreen()),
+              //     );
+              //   },
+              // ),
             ],
           ),
         ),
