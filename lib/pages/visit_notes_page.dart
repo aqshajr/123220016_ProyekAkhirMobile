@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../model/visit_note_model.dart';
-import '../services/visit_note_service.dart';
+import '../service/visit_note_service.dart';
 
 class VisitNotesPage extends StatefulWidget {
   const VisitNotesPage({super.key});
