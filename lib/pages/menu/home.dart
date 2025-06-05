@@ -1,9 +1,12 @@
+import 'package:artefacto/model/user_model.dart';
 import 'package:artefacto/pages/menu/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../notif_page.dart';
 import 'camera.dart';
 import 'eksplorasi.dart';
+import 'visit_notes.dart';
+// import 'package:artefacto/pages/menu/notification_page.dart'; // Commented out due to missing file
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -52,7 +55,8 @@ class _HomePageState extends State<HomePage> {
       debugPrint('Error loading user data: $e');
       // Tambahkan penanganan error lebih spesifik
       if (e is TypeError) {
-        debugPrint('TypeError: Pastikan tipe data di SharedPreferences konsisten');
+        debugPrint(
+            'TypeError: Pastikan tipe data di SharedPreferences konsisten');
       }
     } finally {
       setState(() => _isLoading = false);
@@ -93,6 +97,7 @@ class _HomePageState extends State<HomePage> {
     final List<Widget> _widgetOptions = <Widget>[
       EksplorasiPage(username: userData['username']),
       const CameraPage(),
+      const VisitNotesPage(),
       _buildProfilePage(),
     ];
 
@@ -106,6 +111,10 @@ class _HomePageState extends State<HomePage> {
         label: 'Scan Artefak',
       ),
       BottomNavigationBarItem(
+        icon: Icon(Icons.book),
+        label: 'Catatan',
+      ),
+      BottomNavigationBarItem(
         icon: Icon(Icons.person),
         label: 'Profile',
       ),
@@ -115,47 +124,34 @@ class _HomePageState extends State<HomePage> {
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.white,
+          surfaceTintColor: Colors.white,
           elevation: 0,
-          title: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Artefacto',
-                  style: TextStyle(
-                    color: Color(0xff233743),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.notifications),
-                  color: const Color(0xff233743),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NotificationPage(),
-                      ),
-                    );
-                  },
-                ),
-              ],
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.notifications),
+              color: const Color(0xff233743),
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Halaman Notifikasi belum tersedia.')),
+                );
+              },
             ),
-          ),
+            const SizedBox(width: 16.0)
+          ],
           automaticallyImplyLeading: false,
           toolbarHeight: 60,
         ),
         body: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
           color: Colors.white,
           child: _widgetOptions.elementAt(_selectedIndex),
         ),
         bottomNavigationBar: BottomNavigationBar(
           items: navItems,
           currentIndex: _selectedIndex,
-          unselectedItemColor: Colors.black26,
+          backgroundColor: Colors.white,
+          type: BottomNavigationBarType.fixed,
+          unselectedItemColor: Colors.grey[600],
           selectedFontSize: 12.0,
           selectedItemColor: const Color(0xff233743),
           onTap: (index) {

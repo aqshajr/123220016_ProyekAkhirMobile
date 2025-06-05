@@ -5,6 +5,7 @@ import 'package:artefacto/model/temple_model.dart';
 import 'auth_service.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:geolocator/geolocator.dart';
 
 class TempleService {
   static const String baseUrl =
@@ -81,10 +82,9 @@ class TempleService {
     if (imageFile != null) {
       final mimeType = lookupMimeType(imageFile.path) ?? 'image/jpeg';
       final fileExt = imageFile.path.split('.').last.toLowerCase();
-      final mediaType =
-          fileExt == 'png'
-              ? MediaType('image', 'png')
-              : MediaType('image', 'jpeg');
+      final mediaType = fileExt == 'png'
+          ? MediaType('image', 'png')
+          : MediaType('image', 'jpeg');
       request.files.add(
         await http.MultipartFile.fromPath(
           'image',
@@ -171,10 +171,9 @@ class TempleService {
     if (imageFile != null) {
       final mimeType = lookupMimeType(imageFile.path) ?? 'image/jpeg';
       final fileExt = imageFile.path.split('.').last.toLowerCase();
-      final mediaType =
-          fileExt == 'png'
-              ? MediaType('image', 'png')
-              : MediaType('image', 'jpeg');
+      final mediaType = fileExt == 'png'
+          ? MediaType('image', 'png')
+          : MediaType('image', 'jpeg');
       request.files.add(
         await http.MultipartFile.fromPath(
           'image',
@@ -209,5 +208,41 @@ class TempleService {
     if (response.statusCode != 200) {
       throw Exception('Failed to delete temple: ${response.statusCode}');
     }
+  }
+
+  static Future<List<Temple>> getNearbyTemples({
+    required double latitude,
+    required double longitude,
+    double radiusInKm = 50.0,
+  }) async {
+    final allTemples = await getTemples();
+    final List<Map<String, dynamic>> templesWithDistance = [];
+
+    for (final temple in allTemples) {
+      if (temple.latitude != null && temple.longitude != null) {
+        final double distanceInMeters = Geolocator.distanceBetween(
+          latitude,
+          longitude,
+          temple.latitude!,
+          temple.longitude!,
+        );
+
+        final double distanceInKm = distanceInMeters / 1000;
+
+        if (distanceInKm <= radiusInKm) {
+          templesWithDistance.add({
+            'temple': temple,
+            'distance': distanceInKm,
+          });
+        }
+      }
+    }
+
+    // Sort by distance
+    templesWithDistance.sort(
+        (a, b) => (a['distance'] as double).compareTo(b['distance'] as double));
+
+    // Return only the temple objects
+    return templesWithDistance.map((e) => e['temple'] as Temple).toList();
   }
 }

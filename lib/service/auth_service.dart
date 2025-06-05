@@ -21,7 +21,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('token', token);
     await prefs.setBool('isAdmin', isAdmin);
-    await prefs.setInt('userId', userId);
+    await prefs.setString('userId', userId.toString());
     if (username != null) await prefs.setString('username', username);
     if (email != null) await prefs.setString('email', email);
     if (profilePicture != null)
@@ -87,17 +87,13 @@ class AuthService {
         return {
           'success': false,
           'message':
-          jsonData['message'] ?? 'Server error: ${response.statusCode}',
+              jsonData['message'] ?? 'Server error: ${response.statusCode}',
         };
       }
     } catch (e) {
-      return {
-        'success': false,
-        'message': 'Connection error: ${e.toString()}',
-      };
+      return {'success': false, 'message': 'Connection error: ${e.toString()}'};
     }
   }
-
 
   Future<Map<String, dynamic>> login({
     required String email,
@@ -173,9 +169,9 @@ class AuthService {
     return prefs.getBool('isAdmin') ?? false;
   }
 
-  Future<int?> getUserId() async {
+  Future<String?> getUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('userId');
+    return prefs.getString('userId');
   }
 
   Future<String?> getUsername() async {

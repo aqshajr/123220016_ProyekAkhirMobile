@@ -1,0 +1,27 @@
+runtime: nodejs20
+service: default
+
+handlers:
+  - url: /assets
+    static_dir: dist/assets
+    secure: always
+    expiration: "1d"
+
+  - url: /(.*\.(ico|txt|xml|json|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot))$
+    static_files: dist/\1
+    upload: dist/.*\.(ico|txt|xml|json|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$
+    secure: always
+    expiration: "1h"
+
+  - url: /.*
+    static_files: dist/index.html
+    upload: dist/index.html
+    secure: always
+    http_headers:
+      Cache-Control: "no-cache, no-store, must-revalidate"
+      Pragma: "no-cache"
+      Expires: "0"
+
+env_variables:
+  NODE_ENV: production
+

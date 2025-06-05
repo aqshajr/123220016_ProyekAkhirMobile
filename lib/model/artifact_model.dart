@@ -14,6 +14,8 @@ class Artifact {
   final String templeTitle;
   final bool isBookmarked;
   final bool isRead;
+  final double? latitude;
+  final double? longitude;
 
   Artifact({
     required this.artifactID,
@@ -31,9 +33,22 @@ class Artifact {
     required this.templeTitle,
     required this.isBookmarked,
     required this.isRead,
+    this.latitude,
+    this.longitude,
   });
 
   factory Artifact.fromJson(Map<String, dynamic> json) {
+    double? lat, lng;
+    final url = json['locationUrl'] as String?;
+    if (url != null) {
+      final regex = RegExp(r'@(-?\d+\.\d+),(-?\d+\.\d+)');
+      final match = regex.firstMatch(url);
+      if (match != null) {
+        lat = double.tryParse(match.group(1)!);
+        lng = double.tryParse(match.group(2)!);
+      }
+    }
+
     return Artifact(
       artifactID: json['artifactID'] as int,
       templeID: json['templeID'] as int,
@@ -46,10 +61,12 @@ class Artifact {
       detailStyle: json['detailStyle'] as String?,
       funfactTitle: json['funfactTitle'] as String?,
       funfactDescription: json['funfactDescription'] as String?,
-      locationUrl: json['locationUrl'] as String?,
+      locationUrl: url,
       templeTitle: json['Temple']?['title'] ?? '',
       isBookmarked: json['isBookmarked'] == true,
       isRead: json['isRead'] == true,
+      latitude: lat,
+      longitude: lng,
     );
   }
 

@@ -1,9 +1,27 @@
 import 'package:artefacto/pages/splash_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'model/visit_note_model.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
+  await Hive.initFlutter();
+  Hive.registerAdapter(VisitNoteAdapter());
+
+  // Delete existing box if exists
+  if (await Hive.boxExists('visit_notes')) {
+    await Hive.deleteBoxFromDisk('visit_notes');
+  }
+
+  // Open box with new schema
+  await Hive.openBox<VisitNote>('visit_notes');
+
+  // Load environment variables
   await dotenv.load(fileName: ".env");
+
   runApp(const MyApp());
 }
 
